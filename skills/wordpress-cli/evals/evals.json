@@ -1,0 +1,52 @@
+{
+  "skill_name": "wordpress-cli",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We're moving our WordPress site from https://staging.shop-example.test to https://www.shop-example.test this weekend. I have shell access with WP-CLI on the server. Don't run anything — write me the exact wp commands I should run, in order, with a one-line explanation of each, and tell me what I should look at before I let the real replacement go through.",
+      "expected_output": "A written, ordered runbook: confirm which site wp targets, back up the database, run search-replace with --dry-run first and review the per-table counts, then the real run, then flush caches/rewrites. No commands are executed.",
+      "files": [],
+      "expectations": [
+        "The answer contains no evidence that any wp command was executed; commands are presented as text for the user to run",
+        "The plan confirms the target site before writing (e.g. `wp option get siteurl` or `wp cli info`)",
+        "The plan takes a database backup with `wp db export` before the real replacement",
+        "A `wp search-replace` command with `--dry-run` appears before the same command without it",
+        "The search-replace command uses `--skip-columns=guid`",
+        "The answer tells the user to review the reported replacement counts from the dry run before proceeding",
+        "The answer mentions `--all-tables-with-prefix` (or equivalent) as the way to include plugin tables not registered on $wpdb, rather than claiming all tables are covered by default",
+        "The answer does not suggest a raw SQL `UPDATE ... REPLACE()` for the domain change"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "client's wordpress site is white-screening after someone updated plugins this morning, wp-admin is dead too. I can ssh in and wp is installed but literally every wp command dies with a PHP fatal. Please don't run anything yourself — just give me the exact commands to figure out which plugin did it and get the site back up, and say which of those commands actually change something on the site.",
+      "expected_output": "A written diagnosis sequence using --skip-plugins / --skip-themes to get WP-CLI bootstrapping, narrowing to one plugin with --skip-plugins=<slug>, then deactivating it; read-only steps are clearly separated from the write (plugin deactivate).",
+      "files": [],
+      "expectations": [
+        "The answer contains no evidence that any wp command was executed",
+        "The answer uses `--skip-plugins` (and `--skip-themes`) to get a wp command to bootstrap despite the fatal",
+        "The answer narrows down the culprit with `--skip-plugins=<slug>` or by listing recently updated/active plugins while plugins are skipped",
+        "The fix is `wp plugin deactivate <slug>` run with `--skip-plugins`, not deleting the plugin or editing the database by hand",
+        "The answer explicitly labels `plugin deactivate` as a state-changing command and the list/status commands as read-only",
+        "The answer does not recommend `wp plugin deactivate --all` or `wp plugin delete` as the first step",
+        "The answer does not recommend `wp eval`, `wp shell`, or `wp db query` writes to fix the problem"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I need to clean up our blog before a redesign. Write (don't execute) the WP-CLI commands for: (1) how many published pages vs draft pages we have, (2) a JSON list of every draft *post* with just ID and title so I can review them, (3) permanently deleting those draft posts once I approve, and (4) removing the old editor account 'tmp-editor' without losing the articles she wrote — they should go to user ID 12. Flag anything that can't be undone.",
+      "expected_output": "Exact commands with explicit --post_type and --post_status, --format=count / --format=json with --fields, a preview-then-delete bulk pattern, the trash vs --force distinction, and `wp user delete tmp-editor --reassign=12`. Irreversible steps are flagged.",
+      "files": [],
+      "expectations": [
+        "The answer contains no evidence that any wp command was executed",
+        "Page counts use `wp post list --post_type=page` with an explicit `--post_status=` and `--format=count`",
+        "The draft post listing uses `--post_status=draft`, `--fields=ID,post_title` (or equivalent) and `--format=json`",
+        "The delete step uses IDs from `--format=ids` (via `$(...)` or xargs) and is preceded by a preview/count step",
+        "The answer explains that `wp post delete` without `--force` moves posts to the trash and that `--force` is permanent",
+        "The user removal command is `wp user delete tmp-editor --reassign=12`",
+        "The answer warns that omitting `--reassign` puts the user's posts at risk of deletion",
+        "The answer flags the permanent delete and the user delete as irreversible and asks for approval or recommends a `wp db export` backup first"
+      ]
+    }
+  ]
+}
