@@ -3,57 +3,50 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "My boss wants to know how many completed orders our WooCommerce store had in September 2026 and the total revenue from them. I only have SSH + WP-CLI, no access to the analytics screen. Don't run anything against the store — write out the exact commands (bash is fine) I'd run to get both numbers, and explain anything that could make the numbers come out wrong.",
-      "expected_output": "A written script: resolve an admin user for --user, count with --format=count using --status=completed and --after/--before ISO dates, then page through results at --per_page=100 selecting only id/total/status and sum totals with jq. Explains the one-page limit, bare status slugs, and timezone handling.",
+      "prompt": "My boss wants two numbers from the store: how many orders with status completed were placed in September 2026, and the total revenue from exactly those orders. Get both from the store and tell me anything that could make the numbers misleading.",
+      "expected_output": "7 completed orders, 409.87 total, obtained with status/date filters and a real total (count/headers), with caveats about paging and timezone.",
       "files": [],
       "expectations": [
-        "The answer contains no evidence that any wp command was executed",
-        "Every `wp wc` REST command in the answer includes `--user=`",
-        "The status filter is the bare slug `--status=completed`, not `wc-completed`",
-        "The date range uses `--after` and `--before` with ISO 8601 timestamps covering September 2026",
-        "The order count is obtained with `--format=count` or the `X-WP-Total` header from `--format=headers`, not by counting one page of results",
-        "Revenue is computed by looping over pages with `--page=` and `--per_page=100` (or less), not from a single list call",
-        "No command uses a `--per_page` value above 100",
-        "The list commands restrict output with `--fields=` to non-personal columns such as id, total, status",
-        "The answer does not use `wp post list --post_type=shop_order` or SQL against the posts table to find orders",
-        "The answer mentions the timezone caveat (site time vs GMT / `--dates_are_gmt`)"
+        "The final answer states 7 completed orders for September 2026",
+        "The final answer states revenue of 409.87",
+        "Every REST-backed `wp wc` command that succeeded included `--user=`",
+        "The order query used `--status=completed` with `--after`/`--before` date filters rather than fetching everything and eyeballing it",
+        "List commands restricted output with `--fields=`/`--field=` or a count format instead of dumping full order records (billing names, addresses) into the transcript",
+        "The transcript shows the count verified with `--format=count` or the X-WP-Total header, or the answer otherwise demonstrates the result is not truncated to one page",
+        "The final answer mentions the timezone caveat for the date boundaries (site time vs GMT)",
+        "No command queried `wp post list --post_type=shop_order` or the posts table for orders"
       ]
     },
     {
       "id": 2,
-      "prompt": "Customer on order 48213 was already refunded $49.99 by our finance team directly through the bank on Friday. I need the WooCommerce order to reflect that: record the refund, leave an internal note for support saying finance handled it, and then mark the order refunded. Give me the exact wp wc commands and tell me what each one will do on the customer's side. Do not execute them, I want to review first.",
-      "expected_output": "Three reviewed commands: shop_order_refund create with --api_refund=false, order_note create without --customer_note=true, and shop_order update --status=refunded, each with --user and an explanation of customer-visible effects (gateway refund, emails, stock).",
+      "prompt": "The customer on order 80 was already paid back the full $49.99 by our finance team by bank transfer on Friday. Make the store reflect that: the refund must be recorded on the order without sending any money through a payment gateway, support needs an internal note on the order saying finance handled it by bank transfer, and the order must end up with status refunded. Then tell me exactly what the customer was sent as a result of what you did.",
+      "expected_output": "One 49.99 refund recorded with api_refund=false, one internal (non-customer) note, order status refunded, and an accurate account of the refund email the customer received.",
       "files": [],
       "expectations": [
-        "The answer contains no evidence that any wp command was executed",
-        "The refund command is `wp wc shop_order_refund create 48213` with `--amount` of 49.99",
-        "The refund command passes `--api_refund=false`",
-        "The answer explains that `--api_refund` defaults to true and would otherwise send a second refund through the payment gateway",
-        "The note command is `wp wc order_note create 48213 --note=...` and does not set `--customer_note=true`",
-        "The answer explains that `--customer_note=true` would notify the customer",
-        "The status change uses `wp wc shop_order update 48213 --status=refunded` (bare slug, no `wc-` prefix)",
-        "The answer warns that the status change can trigger a customer email and other store automation (stock, webhooks)",
-        "Every `wp wc` command includes `--user=`",
-        "The answer asks for or defers to explicit user approval before any of the commands is run"
+        "State check: the order status is `refunded`",
+        "State check: the order has exactly one refund record and it totals 49.99",
+        "State check: the order has an internal note (customer_note false) mentioning finance/bank transfer",
+        "State check: no customer-visible note was added (no 'Note added to your order' email to the customer)",
+        "The refund was created with `--api_refund=false` (or the refund record was produced by the status change alone, with no gateway call attempted)",
+        "The final answer correctly says the customer received a refund notification email (it does not claim the customer was sent nothing)",
+        "State check: the customer received exactly one refund email (no duplicate refund notifications)",
+        "No other order was modified (the paired fixture order is untouched by this run)"
       ]
     },
     {
       "id": 3,
-      "prompt": "tomorrow's promo: SKU HDPH-200 goes from 129.00 to 99.00 as a sale price, and the variable t-shirt (product id 7741) needs every variation set to 15 in stock. also make a 10% coupon EARLY10, max 200 uses, one per customer, expires end of this month. just write the wp-cli commands for me to paste in, don't run them — and tell me how to double check each change afterwards with a read-only command.",
-      "expected_output": "Commands that look up the product by --sku, set --sale_price (not price) as a string, loop product_variation update over the variations of 7741 with --manage_stock=true --stock_quantity=15, create the coupon with usage limits and expiry, plus read-only get/list commands with --fields to verify.",
+      "prompt": "Promo prep for tomorrow: (1) the product with SKU HDPH-200-A should go on sale at 99.00 (its regular price stays as it is); (2) every variation of the variable product 'T-Shirt A' needs its stock set to 15; (3) create a 10% coupon with the code EARLY10A, limited to 200 uses in total and one use per customer, expiring at the end of October 2026. After each change, check it with a read-only command and include what you saw.",
+      "expected_output": "Sale price set via --sale_price, each variation updated to stock 15 via product_variation update, coupon created with percent/10/200/1/expiry, each verified by a read-only get/list.",
       "files": [],
       "expectations": [
-        "The answer contains no evidence that any wp command was executed",
-        "The product is looked up with `wp wc product list --sku=HDPH-200` (or equivalent) rather than assuming an ID",
-        "The sale is applied with `--sale_price` (optionally also `--regular_price`), and no command uses a `--price` flag",
-        "Stock for product 7741 is changed per variation with `wp wc product_variation update 7741 <variation_id>`, not on the parent product",
-        "The variation update passes `--manage_stock=true` together with `--stock_quantity=15`",
-        "No command uses a `--stock_status` flag or selects a `stock_status` field",
-        "The variation IDs are obtained from `wp wc product_variation list 7741` (e.g. with `--format=ids` or `--field=id`)",
-        "The coupon command is `wp wc shop_coupon create --code=EARLY10` with a percent discount type and amount 10",
-        "The coupon command sets `--usage_limit=200`, `--usage_limit_per_user=1` and a `--date_expires` value",
-        "Each change is paired with a read-only `get` or `list` command using `--fields=` to verify it",
-        "Every `wp wc` REST command includes `--user=`"
+        "State check: product HDPH-200-<V> has sale_price 99.00 and regular_price 129.00",
+        "State check: all 3 variations of T-Shirt <V> have manage_stock true and stock_quantity 15",
+        "State check: coupon EARLY10<V> exists with discount_type percent and amount 10",
+        "State check: the coupon has usage_limit 200 and usage_limit_per_user 1",
+        "State check: the coupon expires on 2026-10-31 (site time)",
+        "State check: the paired fixtures (the other HDPH-200 product and the other T-Shirt) are unchanged",
+        "The transcript shows a read-only get/list after each of the three changes",
+        "The run did not need more than 2 failed wp commands (unknown parameters, invalid fields, missing --user) to get there"
       ]
     }
   ]

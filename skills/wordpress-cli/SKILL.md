@@ -176,9 +176,11 @@ state-changing command as privileged: **show the user the exact command, say
 which site it will hit, and get explicit approval before running it.**
 Approval for one command does not extend to the next one.
 
-Before anything destructive, offer a backup: `wp db export backup.sql`
-(the file contains credentials-adjacent and personal data — keep it out of
-web roots, repositories, and chat).
+Before anything destructive, offer a backup: `wp db export <path>`. A bare
+filename lands in the current directory, which is often the web root — give a
+path outside it (or `wp db export - > file` to stream it to your side). The
+dump contains personal data and password hashes; keep it out of web roots,
+repositories, and chat.
 
 Destructive or hard to reverse:
 - `db reset`, `db drop`, `db clean`, `db import` — replace or wipe the whole

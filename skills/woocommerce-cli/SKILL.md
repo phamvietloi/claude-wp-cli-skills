@@ -41,6 +41,8 @@ what makes it both convenient and consequential.
   task needs. An unknown name is an error (`Invalid field: …`), which is a
   quick way to learn a field does not exist.
 - `create`, `update`, and `delete` accept `--porcelain` to print only the ID.
+  They do not accept `--fields`/`--format` (`unknown --fields parameter`) —
+  write with `--porcelain`, then read the result back with `get`.
 - Exit `0` = success, non-zero = error. API errors arrive as a message plus a
   JSON body, e.g. `Error: Invalid parameter(s): status {"status":400,…}` — the
   body lists the allowed values, so read it before retrying.
