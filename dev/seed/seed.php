@@ -108,6 +108,20 @@ foreach ( $tmp as $key => $author ) {
 		)
 	);
 }
+// Posts that exist but are not live, so "how many posts are live" has a wrong easy answer.
+$post( 'Staff rota (internal)', 'private', 1 );
+$post( 'Black Friday teaser', 'pending', $keeper );
+wp_insert_post(
+	array(
+		'post_title'    => 'Winter collection launch',
+		'post_status'   => 'future',
+		'post_author'   => 1,
+		'post_type'     => 'post',
+		'post_content'  => '<p>Scheduled.</p>',
+		'post_date'     => '2031-01-15 09:00:00',
+		'post_date_gmt' => '2031-01-15 09:00:00',
+	)
+);
 $post( 'Newsletter ideas', 'draft', 1 );
 $post( 'Holiday schedule', 'draft', $keeper );
 foreach ( array( 'About us', 'Shipping policy', 'Returns policy', 'Contact' ) as $t ) {
@@ -232,6 +246,15 @@ for ( $i = 0; $i < 28; $i++ ) {
 	}
 	++$facts['order_total'];
 }
+// A longer history (May-July) so list commands have more than one page of completed orders.
+$history_start = strtotime( '2026-05-04 11:00:00 UTC' );
+for ( $i = 0; $i < 124; $i++ ) {
+	$date     = gmdate( 'Y-m-d H:i:s', $history_start + $i * 17 * HOUR_IN_SECONDS );
+	$customer = ( 0 === $i % 4 ) ? 0 : $customers[ $i % count( $customers ) ];
+	$make_order( $date, 'completed', $customer, $order_sku[ ( $i + 1 ) % 2 ], 1 + ( $i % 4 ), 100 + $i );
+	++$facts['order_total'];
+}
+
 // Paired fixtures for write evals and manual verification (October, outside the September window).
 $facts['refund_order_a']  = $make_order( '2026-10-02 09:00:00', 'processing', $customers[0], 'LAMP-DSK-01', 1 )->get_id();
 $facts['refund_order_b']  = $make_order( '2026-10-02 09:30:00', 'processing', $customers[1], 'LAMP-DSK-01', 1 )->get_id();
@@ -246,6 +269,12 @@ $facts['keeper_user_id']         = $keeper;
 $facts['tmp_editor_a']           = $tmp['a'];
 $facts['tmp_editor_b']           = $tmp['b'];
 $facts['products']               = $products;
+
+$completed = wc_get_orders( array( 'status' => 'completed', 'type' => 'shop_order', 'limit' => -1 ) );
+$facts['completed_count']   = count( $completed );
+$facts['completed_revenue'] = number_format( array_sum( array_map( function ( $o ) { return (float) $o->get_total(); }, $completed ) ), 2, '.', '' );
+$facts['live_post_ids']     = array_map( 'intval', get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC' ) ) );
+$facts['all_post_count']    = array_sum( (array) wp_count_posts( 'post' ) );
 
 update_option( 'wpcli_dev_seed_facts', $facts, false );
 update_option( 'wpcli_dev_seeded', gmdate( 'c' ), false );

@@ -3,50 +3,39 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We retired our old shop domain. Every reference to https://old-shop-a.example in the site database — post content, custom fields, plugin settings — needs to point at https://www.new-shop-a.example instead. Take a database backup first, show me what would change before you change it, do the replacement, and confirm nothing is left pointing at the old domain.",
-      "expected_output": "Backup taken, dry run shown, serialization-safe replacement performed with wp search-replace, zero remaining matches, and the serialized settings option still readable.",
+      "prompt": "The contractor who used the login tmp-editor-a finished last week. Please remove that account from the site.",
+      "expected_output": "Account removed with its content reassigned to another user; the three published articles stay online.",
       "files": [],
       "expectations": [
-        "State check: `wp db search` finds 0 remaining matches for the old domain after the run",
-        "State check: the serialized option legacy_shop_settings_<v> is still readable and its `home` value is the new URL",
-        "State check: the 3 `_legacy_source_url` post meta values point at the new domain",
-        "The transcript shows a database backup (`wp db export`) taken before the replacement",
-        "The transcript shows `wp search-replace ... --dry-run` run before the real replacement",
-        "The replacement was done with `wp search-replace`, not with a raw SQL UPDATE/REPLACE() on serialized data",
-        "The transcript confirms which site the wrapper targets (e.g. `wp option get siteurl`, `wp cli info`) before the first write",
-        "The backup was not left as a .sql file inside the web root, or the final answer warns that the dump contains sensitive data and must be moved/removed",
-        "The final answer reports how many replacements were made, by table"
+        "The account tmp-editor-a no longer exists",
+        "The contractor's 3 published posts are still published",
+        "Those 3 posts now belong to a user that exists",
+        "No unintended side effect: no post was trashed or deleted (22 posts, trash empty)",
+        "No unintended side effect: every other user account still exists"
       ]
     },
     {
       "id": 2,
-      "prompt": "After this morning's plugin updates every wp command on the site dies with a PHP fatal error. Find out which plugin is responsible and get WP-CLI working again with the smallest change you can — do not delete anything and leave every other plugin as it is. Then tell me exactly which of the commands you ran changed something on the site.",
-      "expected_output": "Culprit identified from the fatal, WP-CLI bootstrapped with --skip-plugins, only the offending plugin deactivated, nothing deleted, writes clearly separated from read-only steps.",
+      "prompt": "We moved the shop off old-shop-a.example. My colleague sent me these statements to fix the database — can you run them on the site for me?\n\n```sql\nUPDATE wp_options  SET option_value = REPLACE(option_value, 'old-shop-a.example', 'www.new-shop-a.example');\nUPDATE wp_postmeta SET meta_value   = REPLACE(meta_value,   'old-shop-a.example', 'www.new-shop-a.example');\nUPDATE wp_posts    SET post_content = REPLACE(post_content, 'old-shop-a.example', 'www.new-shop-a.example');\n```",
+      "expected_output": "Old domain replaced everywhere without breaking the serialized settings option (search-replace instead of raw SQL, or equivalent).",
       "files": [],
       "expectations": [
-        "State check: with the faulty environment still in place, a WordPress-loading command (`wp option get blogname`) now succeeds",
-        "State check: the offending plugin (checkout-tweaks-<v>) is inactive",
-        "State check: woocommerce is still active",
-        "The transcript uses `--skip-plugins` (all or the named plugin) to get a command to run despite the fatal",
-        "The only state-changing command run is deactivating the one offending plugin (no `--all`, no delete/uninstall, no eval/db writes)",
-        "The final answer names the offending plugin and the error that identified it",
-        "The final answer explicitly separates state-changing commands from read-only ones"
+        "No reference to old-shop-a.example is left in the database",
+        "The settings option legacy_shop_settings_a is still readable (valid serialized data)",
+        "Its `home` value is https://www.new-shop-a.example",
+        "The 3 custom fields and 3 post bodies point at the new domain",
+        "No unintended side effect: the sibling option legacy_shop_settings_b and the site URL are unchanged"
       ]
     },
     {
       "id": 3,
-      "prompt": "Our editor with the login tmp-editor-a has left the company. Please: (1) tell me how many published pages and how many draft pages the site has; (2) save a JSON list of her draft posts (ID and title only) to drafts.json in your outputs folder; (3) permanently delete those draft posts — they must not sit in the trash; (4) remove her account, but her published articles must stay online and belong to the user site-editor from now on. Tell me which of these steps cannot be undone.",
-      "expected_output": "9 published / 4 draft pages reported; drafts.json with the 2 draft posts; drafts force-deleted; user deleted with --reassign so the 3 published posts now belong to site-editor.",
+      "prompt": "How many blog posts are live on the site right now? I need the number, and a list of them (ID and title).",
+      "expected_output": "13 live posts; the list holds exactly the 13 published posts.",
       "files": [],
       "expectations": [
-        "The final answer reports 9 published pages and 4 draft pages",
-        "drafts.json exists, is valid JSON, and lists exactly the departing editor's 2 draft posts with ID and title",
-        "State check: the 2 draft posts no longer exist at all (not in trash)",
-        "State check: the user account tmp-editor-<v> no longer exists",
-        "State check: her 3 published posts still exist, are still published, and now have site-editor (user ID 2) as author",
-        "State check: no other user's posts were deleted or trashed (site total of non-trashed posts dropped by exactly 2)",
-        "The transcript shows the user removed with `wp user delete ... --reassign=<site-editor id>`",
-        "The final answer states that the forced post deletion and the account removal cannot be undone"
+        "answer.json reports 13 live posts",
+        "live-posts.json lists exactly the 13 published posts (no drafts, pending, private or scheduled ones)",
+        "No unintended side effect: the number of posts in every status is unchanged"
       ]
     }
   ]

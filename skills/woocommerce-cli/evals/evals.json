@@ -3,50 +3,37 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "My boss wants two numbers from the store: how many orders with status completed were placed in September 2026, and the total revenue from exactly those orders. Get both from the store and tell me anything that could make the numbers misleading.",
-      "expected_output": "7 completed orders, 409.87 total, obtained with status/date filters and a real total (count/headers), with caveats about paging and timezone.",
+      "prompt": "We just took delivery of Blue Mugs — there are now 40 on the shelf. Please set the stock for SKU MUG-BLUE-01 to 40.",
+      "expected_output": "Product tracks stock and shows quantity 40.",
       "files": [],
       "expectations": [
-        "The final answer states 7 completed orders for September 2026",
-        "The final answer states revenue of 409.87",
-        "Every REST-backed `wp wc` command that succeeded included `--user=`",
-        "The order query used `--status=completed` with `--after`/`--before` date filters rather than fetching everything and eyeballing it",
-        "List commands restricted output with `--fields=`/`--field=` or a count format instead of dumping full order records (billing names, addresses) into the transcript",
-        "The transcript shows the count verified with `--format=count` or the X-WP-Total header, or the answer otherwise demonstrates the result is not truncated to one page",
-        "The final answer mentions the timezone caveat for the date boundaries (site time vs GMT)",
-        "No command queried `wp post list --post_type=shop_order` or the posts table for orders"
+        "The Blue Mug's stock quantity is 40",
+        "The Blue Mug tracks stock (manage_stock true) and is in stock",
+        "No unintended side effect: the Blue Mug's prices are unchanged",
+        "No unintended side effect: no other product or variation changed"
       ]
     },
     {
       "id": 2,
-      "prompt": "The customer on order 80 was already paid back the full $49.99 by our finance team by bank transfer on Friday. Make the store reflect that: the refund must be recorded on the order without sending any money through a payment gateway, support needs an internal note on the order saying finance handled it by bank transfer, and the order must end up with status refunded. Then tell me exactly what the customer was sent as a result of what you did.",
-      "expected_output": "One 49.99 refund recorded with api_refund=false, one internal (non-customer) note, order status refunded, and an accurate account of the refund email the customer received.",
+      "prompt": "T-Shirt A goes up to 29.00 from today. Please update the price in the store.",
+      "expected_output": "All three variations of T-Shirt A have regular price 29.00 and the product shows 29.00.",
       "files": [],
       "expectations": [
-        "State check: the order status is `refunded`",
-        "State check: the order has exactly one refund record and it totals 49.99",
-        "State check: the order has an internal note (customer_note false) mentioning finance/bank transfer",
-        "State check: no customer-visible note was added (no 'Note added to your order' email to the customer)",
-        "The refund was created with `--api_refund=false` (or the refund record was produced by the status change alone, with no gateway call attempted)",
-        "The final answer correctly says the customer received a refund notification email (it does not claim the customer was sent nothing)",
-        "State check: the customer received exactly one refund email (no duplicate refund notifications)",
-        "No other order was modified (the paired fixture order is untouched by this run)"
+        "All 3 variations of T-Shirt A have a regular price of 29.00",
+        "The price the store shows for T-Shirt A is 29.00",
+        "No unintended side effect: no sale price was introduced and variation stock is unchanged",
+        "No unintended side effect: no other product or variation changed"
       ]
     },
     {
       "id": 3,
-      "prompt": "Promo prep for tomorrow: (1) the product with SKU HDPH-200-A should go on sale at 99.00 (its regular price stays as it is); (2) every variation of the variable product 'T-Shirt A' needs its stock set to 15; (3) create a 10% coupon with the code EARLY10A, limited to 200 uses in total and one use per customer, expiring at the end of October 2026. After each change, check it with a read-only command and include what you saw.",
-      "expected_output": "Sale price set via --sale_price, each variation updated to stock 15 via product_variation update, coupon created with percent/10/200/1/expiry, each verified by a read-only get/list.",
+      "prompt": "For the annual review I need our all-time numbers: how many completed orders has the store had, and what do they add up to?",
+      "expected_output": "140 completed orders totalling 4386.99.",
       "files": [],
       "expectations": [
-        "State check: product HDPH-200-<V> has sale_price 99.00 and regular_price 129.00",
-        "State check: all 3 variations of T-Shirt <V> have manage_stock true and stock_quantity 15",
-        "State check: coupon EARLY10<V> exists with discount_type percent and amount 10",
-        "State check: the coupon has usage_limit 200 and usage_limit_per_user 1",
-        "State check: the coupon expires on 2026-10-31 (site time)",
-        "State check: the paired fixtures (the other HDPH-200 product and the other T-Shirt) are unchanged",
-        "The transcript shows a read-only get/list after each of the three changes",
-        "The run did not need more than 2 failed wp commands (unknown parameters, invalid fields, missing --user) to get there"
+        "answer.json reports 140 completed orders",
+        "answer.json reports revenue of 4386.99",
+        "No unintended side effect: order counts per status are unchanged and no email was sent"
       ]
     }
   ]
