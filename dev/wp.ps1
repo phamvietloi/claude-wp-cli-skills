@@ -3,7 +3,7 @@
 $PSNativeCommandArgumentPassing = 'Standard'
 
 # PowerShell turns an unquoted a,b,c into an array; put it back together.
-$wpArgs = foreach ($a in $args) { if ($a -is [array]) { $a -join ',' } else { "$a" } }
+$wpArgs = foreach ($a in $args) { if ($a -is [array]) { ($a | Where-Object { "$_" -ne '' }) -join ',' } else { "$a" } }
 
 $dockerArgs = @('exec', '-i')
 if ($env:WPCLI_SCENARIO) { $dockerArgs += @('-e', "WPCLI_SCENARIO=$env:WPCLI_SCENARIO") }

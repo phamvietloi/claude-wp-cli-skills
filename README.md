@@ -55,8 +55,8 @@ Requires Docker Desktop and PowerShell 7. Ports and dev-only credentials come
 from `dev/.env`, which `setup.ps1` creates from `dev/.env.example`.
 
 Seeded data, all fake: 7 simple products with SKUs, 2 variable T-shirts with
-3 size variations each, 6 customers (`@example.com`), 32 orders across every
-status dated August–October 2026, 1 coupon, a handful of users, posts, and
+3 size variations each, 6 customers (`@example.com`), 156 orders across every
+status dated May–October 2026 (more than one page of completed orders), 1 coupon, a handful of users, posts, and
 pages, and two inactive fixture plugins used to stage a "broken plugin".
 Fixtures that tests write to exist as A/B pairs.
 

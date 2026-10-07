@@ -38,8 +38,10 @@ what makes it both convenient and consequential.
   not just this page), `headers` (paging totals), `body`, `envelope`.
 - Narrow output with `--fields=id,status,total` or `--field=status`. Store
   records are large and full of personal data — ask only for the columns the
-  task needs. An unknown name is an error (`Invalid field: …`), which is a
-  quick way to learn a field does not exist.
+  task needs. An unknown name is an error (`Invalid field: …`), and the field
+  set differs per resource (a variation has no `status`, for instance) — when
+  unsure, read one record with `get <id> --format=json` and use the keys you
+  see.
 - `create`, `update`, and `delete` accept `--porcelain` to print only the ID.
   They do not accept `--fields`/`--format` (`unknown --fields parameter`) —
   write with `--porcelain`, then read the result back with `get`.
