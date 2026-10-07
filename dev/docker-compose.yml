@@ -1,0 +1,71 @@
+# Local WordPress + WooCommerce sandbox for verifying the skills with real writes.
+# Dev-only: every published port is bound to 127.0.0.1.
+name: wpcli-dev
+
+x-db-env: &db-env
+  WORDPRESS_DB_HOST: db
+  WORDPRESS_DB_NAME: ${DB_NAME}
+  WORDPRESS_DB_USER: ${DB_USER}
+  WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+
+services:
+  db:
+    image: mariadb:11
+    container_name: wpcli-db
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    container_name: wpcli-wp
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: *db-env
+    ports:
+      - "127.0.0.1:${SITE_PORT}:80"
+    volumes:
+      - wp:/var/www/html
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./fixtures/plugins/checkout-tweaks-a:/var/www/html/wp-content/plugins/checkout-tweaks-a:ro
+      - ./fixtures/plugins/checkout-tweaks-b:/var/www/html/wp-content/plugins/checkout-tweaks-b:ro
+
+  # WP-CLI lives here; it stays up so dev/wp.ps1 can `docker exec` into it.
+  cli:
+    image: wordpress:cli-php8.3
+    container_name: wpcli-cli
+    depends_on:
+      - wordpress
+    user: "33:33"
+    environment:
+      <<: *db-env
+      HOME: /tmp
+    entrypoint: ["sleep", "infinity"]
+    working_dir: /var/www/html
+    volumes:
+      - wp:/var/www/html
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./fixtures/plugins/checkout-tweaks-a:/var/www/html/wp-content/plugins/checkout-tweaks-a:ro
+      - ./fixtures/plugins/checkout-tweaks-b:/var/www/html/wp-content/plugins/checkout-tweaks-b:ro
+      - ./seed:/opt/dev-seed:ro
+
+  # Catches every outgoing email so "this command emails the customer" is observable.
+  mail:
+    image: axllent/mailpit:latest
+    container_name: wpcli-mail
+    ports:
+      - "127.0.0.1:${MAIL_PORT}:8025"
+
+volumes:
+  db:
+  wp:
