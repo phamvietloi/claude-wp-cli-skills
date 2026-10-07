@@ -43,10 +43,8 @@ one store.
 
 ```powershell
 dev\setup.ps1          # start, install, seed (idempotent)
-dev
-eset.ps1 -Quick   # restore the seeded database + empty the inbox (seconds)
-dev
-eset.ps1          # wipe volumes and rebuild from scratch
+dev\reset.ps1 -Quick   # restore the seeded database + empty the inbox (seconds)
+dev\reset.ps1          # wipe volumes and rebuild from scratch
 dev\wp.ps1 wc shop_order list --user=1 --fields=id,status,total --format=json
 ```
 

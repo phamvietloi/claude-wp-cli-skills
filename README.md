@@ -41,8 +41,8 @@ only place where commands that write may be run.
 ```powershell
 dev\setup.ps1          # start, install WordPress + WooCommerce, enable HPOS, seed fake data
 dev\wp.ps1 wc product list --user=1 --fields=id,sku,regular_price --format=json
-deveset.ps1 -Quick   # back to the seeded state in a few seconds
-deveset.ps1          # wipe volumes and rebuild
+dev\reset.ps1 -Quick   # back to the seeded state in a few seconds
+dev\reset.ps1          # wipe volumes and rebuild
 ```
 
 | What | Where |
@@ -78,7 +78,7 @@ stack. Re-run the checks after a major WooCommerce upgrade.
 
 `skills/<name>/evals/evals.json` holds three test prompts per skill in the
 skill-creator schema. They are executed against the dev sandbox through
-`dev\wp.ps1`; run `deveset.ps1 -Quick` first so every run starts from the
+`dev\wp.ps1`; run `dev\reset.ps1 -Quick` first so every run starts from the
 same data. Results go to `skills/<name>-workspace/` (gitignored).
 
 ## Development
