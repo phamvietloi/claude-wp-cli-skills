@@ -29,7 +29,7 @@ what makes it both convenient and consequential.
   allowed to do the action (normally an administrator or shop manager).
   Without it the call fails with `Error: Sorry, you cannot list resources.
   Make sure to include the --user flag … {"status":401}`. That covers every
-  resource plus `tool`; the native maintenance commands (`hpos`, `update`)
+  resource plus `tool`; native maintenance commands such as `hpos status`
   run without it. Resolve a user instead of guessing:
   `wp user list --role=administrator --field=ID`.
 - Pass `--format=json` whenever you will parse output and pipe to `jq`. The
@@ -118,7 +118,7 @@ Scalar fields are plain flags. **Object and array fields are JSON strings**
 | `shipping_zone`, `shipping_zone_method <zone_id>` | list get create update delete | Shipping zones and their methods       |
 | `shipping_zone_location <zone_id>`, `shipping_method` | list [get]              | Zone locations, available method types    |
 | `payment_gateway`                          | list get update                    | Payment gateways and their settings       |
-| `webhook`, `webhook_delivery <webhook_id>` | full CRUD / list get               | Webhooks and delivery logs                |
+| `webhook`, `webhook_delivery --webhook_id=<id>` | full CRUD / list get          | Webhooks and delivery logs                |
 | `tool`                                     | list, run `<id>`                   | Maintenance tools from WooCommerce → Status → Tools |
 | `hpos`                                     | status, count_unmigrated, verify_data, diff, compatibility-info, sync, backfill, cleanup, enable, disable | High-Performance Order Storage |
 | `update`                                   | —                                  | Run pending WooCommerce database updates  |
