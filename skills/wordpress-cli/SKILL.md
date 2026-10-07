@@ -40,8 +40,11 @@ parseable format.
   the exit code — test `$?`, do not parse their text.
 - `--quiet` suppresses informational messages; `--debug` adds PHP errors and
   bootstrap detail when a command dies before it starts.
-- Commands that ask for confirmation hang in non-interactive contexts. They
-  take `--yes` — which is exactly why those are in the Safety section.
+- Commands that ask for confirmation (`[y/n]`) cannot be answered in a
+  non-interactive context: depending on how stdin is wired they hang, or
+  print the prompt and exit `0` having done nothing. Check the result rather
+  than trusting the exit code. They take `--yes` — which is exactly why those
+  are in the Safety section.
 - Plugins register their own top-level commands (`wp wc`, `wp acf`, …). Bare
   `wp help` lists what this particular site has; do not assume a command
   exists because another site had it.
@@ -155,14 +158,14 @@ Core nouns present on every site. Run `wp help <noun>` for the full verb list.
 | 3 | **Expecting `post list` to stop at a page** | It does not page like the admin screen — with no limit it returns every match, each with its fields. On a large site that is a huge dump. Start with `--format=count`, then fetch with `--fields=` and `--posts_per_page=<n>` (and `--paged=<n>`) or `--format=ids`. |
 | 4 | **`plugin update` scope** | Name the plugins, or pass `--all` to update everything that has an update. On a live site run `wp plugin list --update=available` and `wp plugin update --all --dry-run` first, then update deliberately (`--minor` / `--patch` / `--exclude=` narrow it). |
 | 5 | **`search-replace` without `--dry-run`** | It rewrites matching rows in every table registered to `$wpdb` immediately. Always `--dry-run` first, read the per-table counts (`--report-changed-only` trims the report), and export the DB before the real run. Add `--skip-columns=guid` when changing a domain, and `--all-tables-with-prefix` only when plugin tables not registered on `$wpdb` must be included. |
-| 6 | **Editing serialized data with SQL** | `UPDATE … REPLACE()` through `wp db query` corrupts PHP-serialized values (stored string lengths stop matching). Use `search-replace`, `option patch`, or `post meta patch`, which understand serialization. |
+| 6 | **Editing serialized data with SQL** | `UPDATE … REPLACE()` through `wp db query` reports success and corrupts PHP-serialized values: the stored string lengths stop matching, and the option then reads back as missing (`Could not get '<key>' option`). Use `search-replace`, `option patch`, or `post meta patch`, which rewrite the serialization correctly. |
 | 7 | **`option get` on an array** | The default format is a PHP `var_export` dump. Use `--format=json`; write back with `wp option update <key> '<json>' --format=json`, or change one nested key with `wp option patch update <key> <key-path>… <value>`. |
-| 8 | **`post delete` is trash, except when it isn't** | Without `--force` a post goes to the trash (`Success: Trashed post …`); `--force` skips the trash and is permanent. Not every post type can be trashed — if the command refuses, do not reach for `--force` without telling the user it is irreversible. `term delete` and `menu delete` have no trash at all. |
-| 9 | **`user delete` without `--reassign`** | `--reassign=<user-id>` hands the user's posts to someone else. Without it their content is at risk of being deleted with the account — decide with the user first, and never pair `--yes` with a missing `--reassign` by accident. |
+| 8 | **`post delete` is trash, except when it isn't** | Only posts and pages go to the trash (`Success: Trashed post …`). Every other post type — attachments, products, any custom type — is refused with `Posts of type '…' do not support being sent to trash` and a non-zero exit until you add `--force`, which deletes permanently. Do not add `--force` to get past that warning without telling the user it is irreversible. `comment delete` also trashes unless `--force`; `term delete` and `menu delete` have no trash at all. |
+| 9 | **`user delete` without `--reassign`** | `--reassign=<user-id>` hands the user's content to someone else. Without it WP-CLI asks `--reassign parameter not passed. All associated posts will be deleted. Proceed?`, and with `--yes` the account is removed and its posts are taken off the site (they land in the trash). Decide with the user first, and never pair `--yes` with a missing `--reassign` by accident. |
 | 10 | **Hard-coding the `wp_` prefix in SQL** | Get it from `wp db prefix`; list real table names with `wp db tables`. |
 | 11 | **Fatal error on every command** | A broken plugin or theme kills the bootstrap. Retry with `--skip-plugins --skip-themes`, then narrow down with `--skip-plugins=<slug>`. mu-plugins still load. |
 | 12 | **Forgetting `core update-db`** | After `wp core update`, run `wp core update-db` (it has `--dry-run`) or the site may sit on a "database update required" screen. |
-| 13 | **Printing secrets** | `wp config list`, `wp config get DB_PASSWORD`, and `wp db export` output credentials, salts, and personal data. Ask for the one constant you need and never paste the rest into chat or logs. `user reset-password --show-password` prints passwords too. |
+| 13 | **Printing secrets** | `wp config list`, `wp config get DB_PASSWORD`, and `wp db export` output credentials, salts, and personal data. Ask for the one constant you need and never paste the rest into chat or logs. `user reset-password --show-password` (or `--porcelain`) prints the new password too. |
 | 14 | **Using `wp post` for WooCommerce orders** | Stores on High-Performance Order Storage keep orders outside the posts table; `wp post list --post_type=shop_order` returns 0 there. Use `wp wc shop_order …` (see the `woocommerce-cli` skill). |
 | 15 | **Quoting across shells** | Over SSH, in PowerShell, or inside `xargs`, an argument crosses more than one shell. Wrap values containing spaces, `$`, or JSON in single quotes and, if a value arrives mangled, check what the far side actually received before retrying. |
 
@@ -192,8 +195,9 @@ Destructive or hard to reverse:
   value (`siteurl`, `home`, `active_plugins`, `template`) breaks the site;
   shuffling salts logs everyone out.
 - `user create|update|set-role|reset-password`, `user application-password
-  create`, `role|cap` changes — these grant or revoke access, and several
-  send email.
+  create`, `role|cap` changes — these grant or revoke access. `user
+  reset-password` emails the user unless `--skip-email`; `user create` emails
+  the new user and the admin only with `--send-email`.
 - `eval`, `eval-file`, `shell` — arbitrary PHP with full database access.
 - `site empty` (truncates posts, comments, terms; `--uploads` also deletes
   files), `site delete`, `media regenerate` (long-running, rewrites files),
@@ -274,6 +278,9 @@ wp plugin list --skip-plugins --skip-themes     # does core bootstrap at all?
 wp plugin list --skip-plugins=<suspect>         # does it load without this one?
 wp plugin deactivate <suspect> --skip-plugins   # a write — after approval
 ```
+The fatal error usually names the offending file under `wp-content/plugins/`.
+A plain `wp plugin deactivate <suspect>` dies with the same fatal — the
+`--skip-plugins` is what lets the deactivation run.
 
 **Cron and background work:**
 ```bash

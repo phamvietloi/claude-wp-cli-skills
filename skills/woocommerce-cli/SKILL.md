@@ -29,8 +29,8 @@ what makes it both convenient and consequential.
   allowed to do the action (normally an administrator or shop manager).
   Without it the call fails with `Error: Sorry, you cannot list resources.
   Make sure to include the --user flag … {"status":401}`. That covers every
-  resource plus `tool`; native maintenance commands such as `hpos status`
-  run without it. Resolve a user instead of guessing:
+  resource plus `tool list|run`; the native maintenance commands (`hpos …`,
+  `update`) run without it. Resolve a user instead of guessing:
   `wp user list --role=administrator --field=ID`.
 - Pass `--format=json` whenever you will parse output and pipe to `jq`. The
   default table is for humans and changes shape when piped. Other formats:
@@ -90,7 +90,8 @@ Child resources take the parent ID first: `product_variation <product_id>`,
 `shipping_zone_method <zone_id>`, `customer_download <customer_id>`.
 
 Scalar fields are plain flags. **Object and array fields are JSON strings**
-(the CLI JSON-decodes them before the request):
+(the CLI JSON-decodes them before the request). Dotted flags such as
+`--billing.first_name=An` are rejected as unknown parameters:
 
 ```bash
 --billing='{"first_name":"An","email":"an@example.com"}'
@@ -98,6 +99,9 @@ Scalar fields are plain flags. **Object and array fields are JSON strings**
 --meta_data='[{"key":"_internal_ref","value":"A-17"}]'
 --categories='[{"id":15}]'
 ```
+
+Malformed JSON is **not** an error: the command exits `0`, prints the ID, and
+changes nothing. After any write with a JSON flag, read the record back.
 
 ## Resources
 
@@ -118,7 +122,7 @@ Scalar fields are plain flags. **Object and array fields are JSON strings**
 | `shipping_zone`, `shipping_zone_method <zone_id>` | list get create update delete | Shipping zones and their methods       |
 | `shipping_zone_location <zone_id>`, `shipping_method` | list [get]              | Zone locations, available method types    |
 | `payment_gateway`                          | list get update                    | Payment gateways and their settings       |
-| `webhook`, `webhook_delivery --webhook_id=<id>` | full CRUD / list get          | Webhooks and delivery logs                |
+| `webhook`                                  | list get create update delete      | Webhooks (`webhook_delivery` is listed in help but may answer `No route was found`) |
 | `tool`                                     | list, run `<id>`                   | Maintenance tools from WooCommerce → Status → Tools |
 | `hpos`                                     | status, count_unmigrated, verify_data, diff, compatibility-info, sync, backfill, cleanup, enable, disable | High-Performance Order Storage |
 | `update`                                   | —                                  | Run pending WooCommerce database updates  |
@@ -132,19 +136,20 @@ the deprecated predecessor of `hpos`).
 |---|---------|-----|
 | 1 | **Forgetting `--user`** | Every REST-backed `wp wc` call needs it; the 401 is about this, not about SSH or file permissions. |
 | 2 | **Assuming a list is everything** | `list` returns **one page**. The CLI asks for 100 per page when you do not say, and `--per_page` above 100 is rejected (`per_page must be between 1 … and 100`). Get the real total with `--format=count`, or `--format=headers` for `X-WP-Total` and `X-WP-TotalPages` (pages are computed for the `--per_page` you passed), then loop `--page=1..N`. |
-| 3 | **`wc-` prefixed statuses** | The API uses bare slugs: `pending`, `processing`, `on-hold`, `completed`, `cancelled`, `refunded`, `failed` (plus `any`, `trash`). `--status=wc-completed` is a 400 error whose body lists every valid slug, including ones added by extensions. |
+| 3 | **`wc-` prefixed or combined statuses** | The API uses bare slugs: `pending`, `processing`, `on-hold`, `completed`, `cancelled`, `refunded`, `failed` (plus `any`, `trash`). `--status=wc-completed` is a 400 error whose body lists every valid slug, including ones added by extensions. So is a comma list — `--status=completed,processing` is rejected; run one call per status, or fetch `--status=any` and filter with `jq`. |
 | 4 | **Looking for orders with `wp post` or posts-table SQL** | With HPOS on, orders live in dedicated order tables; `wp post list --post_type=shop_order` returns 0 (the posts table only holds placeholders). Check with `wp wc hpos status` and use `wp wc shop_order …`. |
-| 5 | **Treating a status change as a quiet data edit** | `shop_order update --status=…` goes through WooCommerce's normal status transition, the same one the admin screen triggers — which is what sends customer emails, adjusts stock, grants downloads, and fires webhooks and automation plugins. `--set_paid=true` sets the order to processing and reduces stock. Assume the customer will notice. |
-| 6 | **`shop_order_refund create` "just to record it"** | `--api_refund` controls whether the payment gateway API is used, and it defaults to **true** — so the refund is sent to the gateway and real money moves. Pass `--api_refund=false` only when the money was already returned elsewhere and you are recording it. |
-| 7 | **`order_note create --customer_note=true`** | The note is shown to the customer and they are notified. Omit the flag (or pass `false`) for an internal note. |
-| 8 | **`delete` semantics** | `--force=true` bypasses the trash. Orders, products, and coupons are trashed without it. Resources that do not support trashing (customers, order notes, refunds, webhooks, terms such as `product_cat`) require `--force=true`, and then it is permanent. |
-| 9 | **Setting `price`** | There is no `--price` flag; `price` in the output is computed. Write `--regular_price=` and `--sale_price=`. Prices are strings (`"19.99"`). |
-| 10 | **Editing a variable product's price or stock on the parent** | Price and stock live on each variation: `wp wc product_variation update <product_id> <variation_id> --regular_price=…`. |
-| 11 | **Stock flags** | Stock is `--manage_stock=true --stock_quantity=<n>` when the product tracks quantities, or `--in_stock=true\|false` when it does not. There is no `--stock_status` flag and no `stock_status` field to select — list with `--fields=id,in_stock,manage_stock,stock_quantity`. |
-| 12 | **Searching orders by customer name with `--search`** | Search matches a limited set of order fields and is not a reliable customer lookup. Resolve the customer first (`customer list --email=…`) and filter orders with `--customer=<id>`; guest orders have `customer_id` 0 and must be found by date, status, or ID. |
-| 13 | **Dates** | `--after` / `--before` / `--modified_after` take ISO 8601 (`2026-10-01T00:00:00`), interpreted in the site's timezone unless `--dates_are_gmt=true`. Coupon `--date_expires` is site time; `--date_expires_gmt` is the GMT variant. |
-| 14 | **`tool run` as a harmless cleanup** | Tool IDs include `delete_taxes`, `reset_roles`, `clear_sessions` (customer sessions, i.e. carts), `delete_custom_orders_table`, and `hpos_legacy_cleanup`. Read `tool list` and treat every run as a write. |
-| 15 | **Nested fields as bare flags** | Objects and arrays must be one JSON string in single quotes (see Grammar). When updating an array field such as `line_items` or `meta_data`, fetch the current value first so you know what your JSON will add versus change. |
+| 5 | **Treating a status change as a quiet data edit** | `shop_order update --status=…` runs WooCommerce's normal status transition. Moving `pending` → `processing` emails the customer ("order has been received") and the store admin ("New order"), and reduces stock; → `completed` emails the customer again; → `cancelled` puts the stock back. `--set_paid=true` does the same as moving to processing. Automation plugins and webhooks hang off the same transitions. Assume the customer will notice. |
+| 6 | **`shop_order_refund create` "just to record it"** | `--api_refund` defaults to **true**: the refund is sent to the payment gateway and real money moves (on a gateway without refund support the call fails with `does not support automatic refunds` — proof it tried). Pass `--api_refund=false` when the money was already returned elsewhere. Even then it is not silent: the customer is emailed ("partially refunded" / "refunded"), and a refund that covers the whole total flips the order to `refunded` by itself. Stock is not put back by an amount-only refund. |
+| 7 | **`order_note create --customer_note=true`** | The note is emailed to the customer ("Note added to your order"). Omit the flag (or pass `false`) for an internal note, which sends nothing. |
+| 8 | **`--status=refunded` as bookkeeping** | Setting an order to `refunded` makes WooCommerce create a full refund record itself ("Order fully refunded.") and email the customer. Do not also run `shop_order_refund create` for the same money — once the order is fully refunded another refund fails with `Invalid refund amount`. Pick one: record the refund (status follows), or set the status (refund record follows). |
+| 9 | **`delete` semantics** | Orders, products, variations, and coupons go to the trash (`status: trash`, still readable with `get`) unless `--force=true`. Customers, order notes, webhooks, and terms such as `product_cat` refuse with a 501 `… do not support trashing` until you pass `--force=true`, and then it is permanent. Refunds are the trap: `shop_order_refund delete` without `--force` prints "Trashed" but the refund is gone for good. Deleting a customer keeps their orders, which become guest orders (`customer_id` 0). |
+| 10 | **Setting `price`** | `--price` is rejected (`unknown --price parameter`); `price` in the output is computed. Write `--regular_price=` and `--sale_price=`. Prices are strings and are stored as typed (`14` stays `"14"`), so pass `'14.00'` if you want two decimals. End a sale with an empty value: `--sale_price=`. |
+| 11 | **Editing a variable product's price or stock on the parent** | `product update <variable-id> --regular_price=…` exits `0` and changes nothing. Price and stock live on each variation: `wp wc product_variation update <product_id> <variation_id> --regular_price=…`, once per variation. |
+| 12 | **Stock flags** | When the product tracks quantities use `--manage_stock=true --stock_quantity=<n>`; `--stock_quantity` on its own is silently ignored while `manage_stock` is false. When it does not track quantities use `--in_stock=true\|false`; on a managed product `--in_stock` is ignored because availability follows the quantity. `--stock_status` is an unknown parameter and `stock_status` is not a selectable field — list with `--fields=id,in_stock,manage_stock,stock_quantity`. |
+| 13 | **Finding one customer's orders** | `--search=` is a text match on order fields such as billing name and email — handy, but it also returns anyone else who matches. For an exact answer resolve the customer (`customer list --email=…`) and filter with `--customer=<id>`. Guest orders have `customer_id` 0 (`--customer=0` lists them all). `customer list` itself only returns users with the `customer` role unless you pass `--role=all`. |
+| 14 | **Dates** | `--after` / `--before` / `--modified_after` take ISO 8601. A bare timestamp (`2026-10-01T00:00:00`) is read in the site's timezone; add `--dates_are_gmt=true` or a `Z` suffix to mean UTC. Records carry both `date_created` (site time) and `date_created_gmt`. Coupon `--date_expires` is site time; `--date_expires_gmt` is the GMT variant. |
+| 15 | **`tool run` as a harmless cleanup** | Tool IDs include `delete_taxes`, `reset_roles`, `clear_sessions` (customer sessions, i.e. carts), `delete_custom_orders_table`, and `hpos_legacy_cleanup`. Read `tool list` and treat every run as a write. |
+| 16 | **Assuming a JSON flag replaces the whole value** | Updates merge. `--billing='{"first_name":"An"}'` changes that one key and keeps the rest of the address. `--meta_data='[{"key":…}]'` adds or updates those keys and leaves other meta alone. `--line_items='[{"product_id":…}]'` without a line `id` **adds** a line and changes the order total — to change an existing line, include its `id` from `get`. |
 
 ## Safety — customer-visible and money-moving writes
 
@@ -155,13 +160,15 @@ it.** Approval for one order or product does not extend to another.
 
 Customer-visible or irreversible:
 - `shop_order_refund create` — sends money back through the gateway by
-  default (mistake #6). Confirm order, amount, and `--api_refund` explicitly.
+  default and emails the customer either way (mistake #6). Confirm order,
+  amount, and `--api_refund` explicitly.
 - `shop_order update --status=…` / `--set_paid=true` — emails, stock, webhooks
   (mistake #5).
-- `shop_order create` — a real order: may notify the customer and affect
-  stock.
-- `order_note create --customer_note=true` — notifies the customer.
-- `customer create|update|delete` — account emails; personal data.
+- `shop_order create` — a real order: created as `processing` it emails the
+  customer and the admin and reduces stock.
+- `order_note create --customer_note=true` — emails the customer.
+- `customer create|update|delete` — `create` sends the "account has been
+  created" email; personal data throughout.
 - `product|product_variation create|update|delete` — prices, stock, and
   visibility change on the storefront immediately.
 - `shop_coupon create|update|delete` — a wrong amount or missing limits is a
@@ -239,12 +246,16 @@ wp wc product get $pid --user=$WCU \
   --fields=id,name,type,regular_price,sale_price,in_stock,manage_stock,stock_quantity --format=json
 wp wc product update $pid --user=$WCU --regular_price='24.99' --sale_price='19.99'
 wp wc product update $pid --user=$WCU --manage_stock=true --stock_quantity=25
+wp wc product update $pid --user=$WCU --sale_price=          # end the sale
 ```
 
-**Variations of a variable product:**
+**Variations of a variable product** — list, then update each one:
 ```bash
 wp wc product_variation list $pid --user=$WCU \
-  --fields=id,sku,regular_price,in_stock,stock_quantity --format=json
+  --fields=id,sku,regular_price,in_stock,manage_stock,stock_quantity --format=json
+for vid in $(wp wc product_variation list $pid --user=$WCU --format=ids); do
+  wp wc product_variation update $pid $vid --user=$WCU --manage_stock=true --stock_quantity=15
+done
 ```
 
 **Internal note, then a status change** (each needs approval):
@@ -260,10 +271,13 @@ wp wc shop_coupon create --user=$WCU --code='WELCOME10' --discount_type=percent 
   --date_expires='2026-12-31T23:59:59' --individual_use=true --porcelain
 ```
 
-**Record a refund that was already paid back outside the gateway:**
+**Record a refund that was already paid back outside the gateway** — no money
+moves, but the customer still gets the refund email, and a full-amount refund
+sets the order to `refunded` on its own:
 ```bash
 wp wc shop_order_refund create 456 --user=$WCU --amount='19.99' \
   --reason='Refunded manually via bank transfer' --api_refund=false
+wp wc shop_order get 456 --user=$WCU --fields=id,status,total --format=json
 ```
 
 **Store plumbing, read-only:**
