@@ -12,6 +12,7 @@ description: >
   output-format contract, and the safety rules that keep a typo from taking
   down a live site. For WooCommerce store data (orders, products, customers,
   coupons, refunds) use the `woocommerce-cli` skill instead.
+license: MIT
 ---
 
 # WordPress CLI (WP-CLI)

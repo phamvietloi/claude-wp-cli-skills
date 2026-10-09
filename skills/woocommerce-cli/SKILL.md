@@ -14,6 +14,7 @@ description: >
   the safety rules that prevent accidental customer emails and real-money
   refunds. For non-store WordPress work (plugins, posts, options, database)
   use the `wordpress-cli` skill.
+license: MIT
 ---
 
 # WooCommerce CLI (`wp wc`)
