@@ -1,6 +1,6 @@
 # claude-wp-cli-skills
 
-Two private Claude Code skills that teach an agent to operate WordPress and
+Two Claude Code skills that teach an agent to operate WordPress and
 WooCommerce from the command line:
 
 - `wordpress-cli` — WP-CLI (`wp`) for core, plugins, themes, content, users,
@@ -69,14 +69,16 @@ skills/
   woocommerce-cli/
     SKILL.md
     evals/evals.json
+.claude-plugin/   # plugin.json + marketplace.json: the repo root is one plugin
 dev/         # Docker sandbox: compose file, setup/reset/wp scripts, seed, fixtures
 .local/      # gitignored: raw help dumps and probe output used as evidence
 plans/       # gitignored: agent reports
 ```
 
 Add a `references/` folder inside a skill only if its `SKILL.md` would exceed
-about 400 lines; keep every `SKILL.md` under 500. Frontmatter is `name` and
-`description` only, and the two descriptions cross-reference each other.
+about 400 lines; keep every `SKILL.md` under 500. Frontmatter is `name`,
+`description`, and `license` only, and the two descriptions cross-reference
+each other.
 
 ## Editing the skills
 
@@ -86,6 +88,10 @@ about 400 lines; keep every `SKILL.md` under 500. Frontmatter is `name` and
 - Explain why a rule exists rather than stacking MUSTs.
 
 ## Install (Windows, no admin)
+
+The repo is also a plugin marketplace (see README); `skills/<name>/` must
+stay where it is, because both install methods resolve those paths. After
+editing `.claude-plugin/`, run `claude plugin validate .`.
 
 Directory junctions make the repo the live copy of each skill:
 
