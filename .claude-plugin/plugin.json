@@ -1,0 +1,10 @@
+{
+  "name": "wp-cli-skills",
+  "version": "1.0.0",
+  "description": "Agent skills for operating WordPress (WP-CLI) and WooCommerce (wp wc) from the terminal.",
+  "author": { "name": "phamvietloi", "url": "https://github.com/phamvietloi" },
+  "homepage": "https://github.com/phamvietloi/claude-wp-cli-skills",
+  "repository": "https://github.com/phamvietloi/claude-wp-cli-skills",
+  "license": "MIT",
+  "keywords": ["wordpress", "woocommerce", "wp-cli", "skills"]
+}

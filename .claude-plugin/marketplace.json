@@ -1,0 +1,16 @@
+{
+  "name": "claude-wp-cli-skills",
+  "owner": { "name": "phamvietloi", "url": "https://github.com/phamvietloi" },
+  "metadata": {
+    "description": "WordPress and WooCommerce command-line skills for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "wp-cli-skills",
+      "source": "./",
+      "description": "Two skills: wordpress-cli (WP-CLI) and woocommerce-cli (wp wc).",
+      "license": "MIT",
+      "category": "development"
+    }
+  ]
+}
